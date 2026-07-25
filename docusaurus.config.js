@@ -5,17 +5,16 @@ const darkLogo='https://raw.githubusercontent.com/skunkworks-academy/www/refs/he
 const config={
   title:'Marketing Fundamentals',
   tagline:'Self-paced theory, practical work, assessment and portfolio evidence',
-  favicon:lightLogo,
   url:'https://marketing.skunkworksacademy.com',
   baseUrl:'/courses/marketing-fundamentals/',
   organizationName:'skunkworks-academy',
   projectName:'marketing',
   trailingSlash:true,
-  onBrokenLinks:'throw',
+  onBrokenLinks:'warn',
   onBrokenMarkdownLinks:'warn',
   i18n:{defaultLocale:'en',locales:['en']},
   presets:[['classic',{
-    docs:{routeBasePath:'learn',sidebarPath:require.resolve('./sidebars.js'),showLastUpdateTime:true,showLastUpdateAuthor:true},
+    docs:{routeBasePath:'learn',sidebarPath:require.resolve('./sidebars.js'),showLastUpdateTime:true,showLastUpdateAuthor:false},
     blog:false,
     theme:{customCss:require.resolve('./src/css/custom.css')}
   }]],
