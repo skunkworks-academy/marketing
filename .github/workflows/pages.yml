@@ -32,7 +32,28 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Build Marketing Fundamentals course
-        run: npm run build
+        id: docusaurus-build
+        shell: bash
+        run: |
+          set +e
+          npm run build > docusaurus-build.log 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload Docusaurus diagnostics
+        if: steps.docusaurus-build.outputs.status != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docusaurus-build-diagnostics
+          path: docusaurus-build.log
+
+      - name: Fail when Docusaurus build fails
+        if: steps.docusaurus-build.outputs.status != '0'
+        shell: bash
+        run: |
+          tail -n 120 docusaurus-build.log
+          exit 1
 
       - name: Validate static hub
         shell: bash
