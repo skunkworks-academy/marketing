@@ -1,27 +1,37 @@
 # Skunkworks Academy Marketing
 
-Public landing page for `marketing.skunkworksacademy.com` and the Skunkworks Academy marketing learning catalogue.
+Marketing learning hub and self-paced course repository.
 
-## Features
+## Marketing Fundamentals
 
-- Global Academy navigation and responsive mobile menu
-- Dark/light theme-aware Academy favicon
-- Marketing capability tracks
-- Searchable and filterable catalogue
-- Registration and sign-in calls to action
-- Enrolment gate before protected lessons, materials, labs and assessments
-- GitHub Pages custom-domain configuration through `CNAME`
+The repository contains a complete Docusaurus-based Marketing Fundamentals course with:
 
-## Local preview
+- six theory modules;
+- guided practical activities;
+- formative knowledge checks;
+- a final knowledge assessment;
+- an integrated practical assessment;
+- a weighted assessment rubric;
+- a Portfolio of Evidence model;
+- authenticity and verification controls;
+- an Academy accreditation statement;
+- completion and digital credential rules.
 
-Serve the repository root with any static HTTP server, for example:
+## Local development
 
 ```bash
-python -m http.server 8080
+npm install
+npm start
 ```
 
-Then open `http://localhost:8080`.
+## Production build
+
+```bash
+npm run build
+```
+
+The Docusaurus site uses the base path `/courses/marketing-fundamentals/`. The GitHub Pages workflow builds the course and combines it with the existing static marketing hub.
 
 ## Access model
 
-Public visitors can browse catalogue metadata. Every protected learning item routes through the Skunkworks Academy learner portal for registration, authentication and enrolment.
+Public pages describe the course and learning requirements. Credential-bearing submissions, identity verification, assessment records and protected learner materials should be handled through the authenticated Skunkworks Academy learner portal.
