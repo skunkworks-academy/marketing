@@ -18,11 +18,14 @@ const count = document.getElementById('catalogueCount');
 const empty = document.getElementById('emptyState');
 const search = document.getElementById('catalogueSearch');
 const filters = [...document.querySelectorAll('[data-filter]')];
-const modal = document.getElementById('accessModal');
-const accessMessage = document.getElementById('accessMessage');
 let activeFilter = 'all';
 
 const typeLabels = {course:'Course',path:'Learning path',material:'Material',badge:'Badge pathway'};
+const registrationBaseUrl = 'https://portal.skunkworksacademy.com/register/';
+
+function registrationUrl(slug){
+  return `${registrationBaseUrl}?course=${encodeURIComponent(slug)}`;
+}
 
 function render(){
   const query = search.value.trim().toLowerCase();
@@ -45,7 +48,7 @@ function render(){
       <div class="catalogue-card__meta"><span>${item.level}</span><span>${item.duration}</span></div>
       <div class="catalogue-card__footer">
         <a class="catalogue-card__lock" href="content/${item.slug}/"><i class="fa-solid fa-circle-info"></i>View overview</a>
-        <button class="access-button" type="button" data-access-index="${catalogue.indexOf(item)}">Enrol to access</button>
+        <a class="access-button" href="${registrationUrl(item.slug)}"><i class="fa-solid fa-user-plus"></i>Register</a>
       </div>
     </article>`).join('');
 }
@@ -56,20 +59,6 @@ filters.forEach(button => button.addEventListener('click', () => {
   render();
 }));
 search.addEventListener('input', render);
-
-grid.addEventListener('click', event => {
-  const button = event.target.closest('[data-access-index]');
-  if(!button) return;
-  const item = catalogue[Number(button.dataset.accessIndex)];
-  accessMessage.textContent = `${item.title} is protected. Register or sign in, then enrol through the learner portal to open its lessons, materials and assessments.`;
-  modal.hidden = false;
-  document.body.style.overflow = 'hidden';
-  modal.querySelector('.modal__close').focus();
-});
-
-function closeModal(){modal.hidden = true;document.body.style.overflow = ''}
-document.querySelectorAll('[data-close-modal]').forEach(element => element.addEventListener('click', closeModal));
-document.addEventListener('keydown', event => {if(event.key === 'Escape' && !modal.hidden) closeModal()});
 
 const navToggle = document.querySelector('.nav-toggle');
 const nav = document.getElementById('globalNav');
