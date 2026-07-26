@@ -1,4 +1,4 @@
-name: Build and deploy Marketing Academy to GitHub Pages
+name: Validate and deploy Marketing Academy public site
 
 on:
   push:
@@ -23,18 +23,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Build Marketing Fundamentals course
-        run: npm run build
-
-      - name: Validate static hub
+      - name: Validate public site and access gate
         shell: bash
         run: |
           set -euo pipefail
@@ -42,17 +31,33 @@ jobs:
           test -f CNAME
           test -f assets/styles.css
           test -f assets/app.js
+          test -f courses/marketing-fundamentals/index.html
           grep -q '<main id="main"' index.html
           grep -q 'marketing.skunkworksacademy.com' CNAME
+          grep -q 'Enrolment required' courses/marketing-fundamentals/index.html
+          grep -q 'portal.skunkworksacademy.com/login' courses/marketing-fundamentals/index.html
+          grep -q 'portal.skunkworksacademy.com/register' courses/marketing-fundamentals/index.html
 
-      - name: Assemble Pages artifact
+      - name: Assemble public-only Pages artifact
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _site/courses/marketing-fundamentals
-          cp -R build/. _site/courses/marketing-fundamentals/
+          rm -rf _site
+          mkdir -p _site
           cp index.html CNAME .nojekyll _site/
-          cp -R assets content _site/
+          cp -R assets content courses _site/
+
+      - name: Prevent protected learning content from being published
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -d _site/learn
+          test ! -d _site/docs
+          test ! -d _site/build
+          if grep -RIl --exclude='index.html' -E 'Final knowledge assessment|Integrated practical assessment|Portfolio of Evidence' _site/courses/marketing-fundamentals; then
+            echo 'Protected course material was detected in the public artifact.' >&2
+            exit 1
+          fi
 
       - name: Upload Pages artifact
         if: github.event_name != 'pull_request'
