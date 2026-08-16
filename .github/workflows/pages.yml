@@ -47,28 +47,50 @@ jobs:
           cp index.html CNAME .nojekyll _site/
           cp -R assets content courses _site/
 
-      - name: Inject and verify Academy global shell on every published HTML page
+      - name: Inject and verify Academy global shell on every published HTML document
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
           root = Path('_site')
-          loader = '<script defer src="https://skunkworksacademy.com/assets/academy-navigation.js?v=2026.08.15.2" data-skunkworks-global-shell="2026.08.15.2"></script>'
-          pages = list(root.rglob('*.html'))
-          for path in pages:
+          current = 'https://skunkworksacademy.com/assets/academy-navigation.js?v=2026.08.15.1'
+          marker = 'data-skunkworks-global-nav="v10"'
+          loader = f'<script defer src="{current}" {marker}></script>'
+          old_tags = re.compile(r'<script\b[^>]*(?:academy-navigation\.js|data-skunkworks-global-nav|data-skunkworks-global-shell)[^>]*>\s*</script>', re.I)
+          documents = []
+
+          for path in root.rglob('*.html'):
               html = path.read_text(encoding='utf-8', errors='ignore')
-              if 'academy-navigation.js' not in html and 'data-skunkworks-global-shell' not in html:
-                  if '</head>' in html:
-                      html = html.replace('</head>', f'  {loader}\n</head>', 1)
-                  elif '</body>' in html:
-                      html = html.replace('</body>', f'  {loader}\n</body>', 1)
-                  else:
-                      raise SystemExit(f'Cannot inject Academy shell into {path}')
-                  path.write_text(html, encoding='utf-8')
-          missing = [str(p) for p in pages if 'academy-navigation.js' not in p.read_text(encoding='utf-8', errors='ignore') and 'data-skunkworks-global-shell' not in p.read_text(encoding='utf-8', errors='ignore')]
+              if not re.search(r'<!doctype\s+html|<html\b|<head\b|<body\b', html, re.I):
+                  continue
+              html = old_tags.sub('', html)
+              if re.search(r'</head\s*>', html, re.I):
+                  html = re.sub(r'</head\s*>', f'  {loader}\n</head>', html, count=1, flags=re.I)
+              elif re.search(r'</body\s*>', html, re.I):
+                  html = re.sub(r'</body\s*>', f'  {loader}\n</body>', html, count=1, flags=re.I)
+              else:
+                  raise SystemExit(f'Malformed HTML document cannot receive Academy shell: {path}')
+              path.write_text(html, encoding='utf-8')
+              documents.append(path)
+
+          if not documents:
+              raise SystemExit('Marketing artifact contains no HTML documents.')
+
+          missing = []
+          duplicate = []
+          for path in documents:
+              html = path.read_text(encoding='utf-8', errors='ignore')
+              if current not in html or marker not in html:
+                  missing.append(str(path))
+              if html.count('academy-navigation.js') > 1:
+                  duplicate.append(str(path))
           if missing:
               raise SystemExit('Missing Academy global shell: ' + ', '.join(missing))
-          print(f'Verified Academy global shell on {len(pages)} published HTML page(s).')
+          if duplicate:
+              raise SystemExit('Duplicate Academy global shell: ' + ', '.join(duplicate))
+          print(f'Verified Academy canonical v10 shell on {len(documents)} published HTML document(s).')
           PY
 
       - name: Prevent protected learning content from being published
