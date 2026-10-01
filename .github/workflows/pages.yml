@@ -105,6 +105,10 @@ jobs:
             exit 1
           fi
 
+      - name: Install and verify Academy search favicons
+        uses: skunkworks-academy/www/.github/actions/search-favicons@070f621875577a66ae43cdffa7e9d20c65efdc71
+        with:
+          artifact-path: "_site"
       - name: Upload Pages artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
