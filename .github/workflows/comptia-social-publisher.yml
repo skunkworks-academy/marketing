@@ -1,0 +1,139 @@
+name: CompTIA social publisher
+
+on:
+  pull_request:
+    paths:
+      - 'automation/comptia/**'
+      - '.github/workflows/comptia-social-publisher.yml'
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      day:
+        description: 'Campaign day for manual test (1-30)'
+        required: true
+        default: '1'
+        type: string
+      platform:
+        description: 'Platform for manual test'
+        required: true
+        default: 'linkedin'
+        type: choice
+        options:
+          - linkedin
+          - facebook
+          - instagram
+          - whatsapp
+      live:
+        description: 'Publish live instead of dry-run'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: comptia-social-publisher
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate campaign source
+        run: |
+          set -euo pipefail
+          node automation/comptia/validate.mjs
+          node automation/comptia/build-calendar.mjs
+          node automation/comptia/publish.mjs --day 1 --platform linkedin --dry-run
+
+  publish:
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.event_name == 'workflow_dispatch' || vars.COMPTIA_SOCIAL_AUTOMATION_ENABLED == 'true')
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Build campaign calendar
+        run: node automation/comptia/build-calendar.mjs
+
+      - name: Publish scheduled content
+        if: github.event_name == 'schedule'
+        env:
+          COMPTIA_SOCIAL_AUTOMATION_ENABLED: ${{ vars.COMPTIA_SOCIAL_AUTOMATION_ENABLED }}
+          COMPTIA_CAMPAIGN_START_DATE: ${{ vars.COMPTIA_CAMPAIGN_START_DATE }}
+          LINKEDIN_ORGANIZATION_URN: ${{ vars.LINKEDIN_ORGANIZATION_URN }}
+          LINKEDIN_VERSION: ${{ vars.LINKEDIN_VERSION }}
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION }}
+          FACEBOOK_PAGE_ID: ${{ vars.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          INSTAGRAM_USER_ID: ${{ vars.INSTAGRAM_USER_ID }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID: ${{ vars.WHATSAPP_PHONE_NUMBER_ID }}
+          WHATSAPP_TEMPLATE_NAME: ${{ vars.WHATSAPP_TEMPLATE_NAME }}
+          WHATSAPP_TEMPLATE_LANGUAGE: ${{ vars.WHATSAPP_TEMPLATE_LANGUAGE }}
+          WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+          WHATSAPP_RECIPIENTS_JSON: ${{ secrets.WHATSAPP_RECIPIENTS_JSON }}
+        run: node automation/comptia/publish.mjs
+
+      - name: Run manual dry-run
+        if: github.event_name == 'workflow_dispatch' && inputs.live == false
+        run: node automation/comptia/publish.mjs --day "${{ inputs.day }}" --platform "${{ inputs.platform }}" --dry-run
+
+      - name: Run manual live test
+        if: github.event_name == 'workflow_dispatch' && inputs.live == true
+        env:
+          COMPTIA_CAMPAIGN_START_DATE: ${{ vars.COMPTIA_CAMPAIGN_START_DATE }}
+          LINKEDIN_ORGANIZATION_URN: ${{ vars.LINKEDIN_ORGANIZATION_URN }}
+          LINKEDIN_VERSION: ${{ vars.LINKEDIN_VERSION }}
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION }}
+          FACEBOOK_PAGE_ID: ${{ vars.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          INSTAGRAM_USER_ID: ${{ vars.INSTAGRAM_USER_ID }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID: ${{ vars.WHATSAPP_PHONE_NUMBER_ID }}
+          WHATSAPP_TEMPLATE_NAME: ${{ vars.WHATSAPP_TEMPLATE_NAME }}
+          WHATSAPP_TEMPLATE_LANGUAGE: ${{ vars.WHATSAPP_TEMPLATE_LANGUAGE }}
+          WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+          WHATSAPP_RECIPIENTS_JSON: ${{ secrets.WHATSAPP_RECIPIENTS_JSON }}
+        run: node automation/comptia/publish.mjs --day "${{ inputs.day }}" --platform "${{ inputs.platform }}" --live
+
+      - name: Persist verified publication state
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- automation/comptia/state/published.json; then
+            echo 'No publication state changes to persist.'
+            exit 0
+          fi
+          git config user.name 'skunkworks-automation[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add automation/comptia/state/published.json
+          git commit -m 'chore(comptia): record verified social publication state'
+          git push origin HEAD:main
+
+      - name: Write workflow verification summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## CompTIA social publication status'
+            echo
+            echo '- Event: `${{ github.event_name }}`'
+            echo '- Automation enabled: `${{ vars.COMPTIA_SOCIAL_AUTOMATION_ENABLED }}`'
+            echo '- State file: `automation/comptia/state/published.json`'
+            echo '- Successful LinkedIn/Facebook/Instagram records are written only after API read-back verification.'
+            echo '- WhatsApp records indicate API acceptance; delivery/read status requires webhook ingestion.'
+          } >> "$GITHUB_STEP_SUMMARY"
