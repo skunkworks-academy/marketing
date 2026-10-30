@@ -3,6 +3,7 @@ const darkLogo='https://raw.githubusercontent.com/skunkworks-academy/www/refs/he
 
 /** @type {import('@docusaurus/types').Config} */
 const config={
+  favicon: 'images/favicon-search.png',
   title:'Marketing Fundamentals',
   tagline:'Self-paced theory, practical work, assessment and portfolio evidence',
   url:'https://marketing.skunkworksacademy.com',
